@@ -1,0 +1,7 @@
+{
+  "email" : "admin@admin.com",
+  "password" : "{bcrypt}$2a$10$/cZZFC82CAy.3FYEDQi3oON8OL1P9UvSjIumdZ1MunOXofz6Vj66a",
+  "username" : "admin",
+  "active" : 1,
+  "roles" : [ "ADMIN" ]
+}

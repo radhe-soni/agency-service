@@ -1,0 +1,119 @@
+buildscript {
+	ext {
+		springBootVersion = '2.1.2.RELEASE'
+	}
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+	}
+}
+plugins {
+	id "com.moowork.node" version "1.1.1"
+}
+apply plugin: 'idea'
+apply plugin: 'java'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'com.moowork.node'
+
+group = 'com.agencyservice'
+ext.moduleName = 'agencyservice'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.11'
+idea.module.outputDir file("out/production/classes")
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation group: 'javax.servlet', name: 'javax.servlet-api', version: '4.0.1'
+	implementation group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.1.1'
+	implementation group: 'javax.xml.bind', name: 'jaxb-api', version: '2.3.1'
+	implementation group: 'javax.persistence', name: 'javax.persistence-api', version: '2.2'
+	implementation 'javax.annotation:javax.annotation-api:1.3.2'
+	implementation group: 'org.glassfish', name: 'javax.el', version: '3.0.0'
+
+	//compile group: 'org.projectlombok', name: 'lombok', version: '1.18.4'
+
+	implementation 'org.mongodb:mongo-java-driver:3.9.1'
+	implementation ('org.springframework.boot:spring-boot-starter-data-mongodb-reactive'){
+		exclude (module:'mongodb-driver')
+		exclude (module:'mongodb-driver-core')
+		exclude (module: 'bson')
+	}
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation ('org.springframework.boot:spring-boot-starter-webflux')
+	implementation 'com.nimbusds:nimbus-jose-jwt:7.0'
+	implementation 'com.fasterxml.jackson.core:jackson-databind'
+	testCompile 'junit:junit:4.12'
+}
+
+compileJava {
+	inputs.property("moduleName", moduleName)
+	doFirst {
+		options.compilerArgs = [
+				'--module-path', classpath.asPath,
+		]
+		classpath = files()
+	}
+}
+
+compileTestJava {
+	inputs.property("moduleName", moduleName)
+	doFirst {
+		options.compilerArgs = [
+				'--module-path', classpath.asPath,
+				'--add-modules', 'junit',
+				'--add-reads', "$moduleName=junit",
+				'--patch-module', "$moduleName=" + files(sourceSets.test.java.srcDirs).asPath,
+		]
+		classpath = files()
+	}
+}
+
+
+
+test {
+	inputs.property("moduleName", moduleName)
+	doFirst {
+		jvmArgs = [
+				'--module-path', classpath.asPath,
+				'--add-modules', 'ALL-MODULE-PATH',
+				'--add-reads', "$moduleName=junit",
+				'--patch-module', "$moduleName=" + files(sourceSets.test.java.outputDir).asPath,
+		]
+		classpath = files()
+	}
+}
+
+def frontEndDir = file("${project.projectDir}/front-end")
+
+task clientSetup(type: NpmTask, dependsOn: 'clean') {
+	group = 'setup'
+	description = 'Install npm dependencies'
+	workingDir = frontEndDir
+	args = ['run', 'setup']
+}
+
+task buildClient(type: NpmTask) {
+	group = 'build'
+	description = 'Build front-end assets for production'
+	workingDir = frontEndDir
+	args = ['run', 'build']
+}
+
+task resourcesCopy(type: Copy,	dependsOn: 'buildClient') {
+	from "${project.projectDir}/front-end/build"
+	into "${project.projectDir}/src/main/resources/static"
+}
+
+//compileJava.dependsOn(resourcesCopy)
+bootRun.dependsOn(resourcesCopy)
+
+clean {
+	delete "${project.projectDir}/src/main/resources/static"
+}
+
+
